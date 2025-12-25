@@ -150,8 +150,7 @@ const Order = () => {
   const totalPrice = productPrice * orderQuantity;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="container" style={{ minHeight: '100vh', maxWidth: '900px' }}>
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Checkout</h1>
@@ -225,7 +224,8 @@ const Order = () => {
                   <button
                     type="button"
                     onClick={() => setOrderQuantity(Math.max(1, orderQuantity - 1))}
-                    className="w-10 h-10 bg-slate-200 hover:bg-slate-300 rounded-lg font-bold"
+                    className="btn"
+                    style={{ width: '40px', height: '40px', padding: 0 }}
                     disabled={orderQuantity <= 1}
                   >
                     −
@@ -235,12 +235,14 @@ const Order = () => {
                     min="1"
                     value={orderQuantity}
                     onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-20 text-center border border-slate-300 rounded-lg px-3 py-2"
+                    className="input"
+                    style={{ width: '80px', textAlign: 'center' }}
                   />
                   <button
                     type="button"
                     onClick={() => setOrderQuantity(orderQuantity + 1)}
-                    className="w-10 h-10 bg-slate-200 hover:bg-slate-300 rounded-lg font-bold"
+                    className="btn"
+                    style={{ width: '40px', height: '40px', padding: 0 }}
                   >
                     +
                   </button>
@@ -267,7 +269,8 @@ const Order = () => {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                className="btn btnPrimary"
+                style={{ width: '100%', opacity: (loading || success) ? 0.5 : 1, cursor: (loading || success) ? 'not-allowed' : 'pointer' }}
               >
                 {loading ? 'Processing...' : success ? 'Order Placed!' : 'Place Order'}
               </button>
@@ -276,14 +279,14 @@ const Order = () => {
               <button
                 type="button"
                 onClick={() => navigate('/products')}
-                className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-3 px-4 rounded-lg transition-colors"
+                className="btn"
+                style={{ width: '100%' }}
               >
                 Back to Products
               </button>
             </form>
           </div>
         </div>
-      </div>
     </div>
   );
 };

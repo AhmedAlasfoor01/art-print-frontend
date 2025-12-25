@@ -134,8 +134,7 @@ const Product = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="container" style={{ minHeight: '100vh', paddingTop: '24px' }}>
         
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Art Gallery</h1>
@@ -167,7 +166,8 @@ const Product = () => {
                     value={newProduct.ProductName} 
                     onChange={handleInputChange} 
                     required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="input"
+                    style={{ width: '100%' }}
                     placeholder="Enter artwork title"
                   />
                 </div>
@@ -180,7 +180,8 @@ const Product = () => {
                     name='artist' 
                     value={newProduct.artist} 
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="input"
+                    style={{ width: '100%' }}
                     placeholder="Artist name"
                   />
                 </div>
@@ -194,7 +195,8 @@ const Product = () => {
                     value={newProduct.description} 
                     onChange={handleInputChange}
                     rows={3}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                    className="input"
+                    style={{ width: '100%', borderRadius: 'var(--radius)', resize: 'none' }}
                     placeholder="Describe the artwork..."
                   />
                 </div>
@@ -209,7 +211,8 @@ const Product = () => {
                       name='price' 
                       value={newProduct.price} 
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      className="input"
+                      style={{ width: '100%' }}
                       placeholder="0.00"
                     />
                   </div>
@@ -223,7 +226,8 @@ const Product = () => {
                       value={newProduct.currency} 
                       onChange={handleInputChange} 
                       placeholder="BHD"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none uppercase"
+                      className="input"
+                      style={{ width: '100%', textTransform: 'uppercase' }}
                     />
                   </div>
                 </div>
@@ -238,7 +242,8 @@ const Product = () => {
                     value={newProduct.quantity} 
                     onChange={handleInputChange}
                     min="0"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="input"
+                    style={{ width: '100%' }}
                     placeholder="Enter quantity"
                   />
                 </div>
@@ -253,13 +258,14 @@ const Product = () => {
                       value={imageUrl} 
                       onChange={(e) => setImageUrl(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleAddImage()}
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      className="input"
+                      style={{ flex: 1 }}
                       placeholder="Enter image URL"
                     />
                     <button 
                       type="button"
                       onClick={handleAddImage}
-                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
+                      className="btn"
                     >
                       Add
                     </button>
@@ -283,18 +289,20 @@ const Product = () => {
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="cardActions">
                   <button 
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className="btn btnPrimary"
+                    style={{ flex: 1, opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
                   >
                     {loading ? 'Saving...' : (editId ? 'Update' : 'Create')}
                   </button>
                   {editId && (
                     <button 
                       onClick={handleCancel}
-                      className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                      className="btn"
+                      style={{ flex: 1 }}
                     >
                       Cancel
                     </button>
@@ -395,7 +403,7 @@ const Product = () => {
                             </div>
                           )}
 
-                          <div className="flex gap-2 pt-2 border-t border-slate-100">
+                          <div className="cardActions">
                             {/* Buy Now Button - redirects to order page with product ID */}
                             <button 
                               onClick={(e) => { 
@@ -403,21 +411,24 @@ const Product = () => {
                                 // Navigate to order page with product ID in URL
                                 navigate(`/orders?productId=${Product._id}`);
                               }} 
-                              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                              className="btn btnPrimary"
+                              style={{ flex: 1, background: '#16a34a', borderColor: '#16a34a' }}
                             >
                               Buy Now
                             </button>
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleEdit(Product); }} 
                               disabled={loading}
-                              className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                              className="btn"
+                              style={{ flex: 1, opacity: loading ? 0.5 : 1 }}
                             >
                               Edit
                             </button>
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleDelete(Product._id); }} 
                               disabled={loading}
-                              className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                              className="btn"
+                              style={{ flex: 1, color: '#dc2626', opacity: loading ? 0.5 : 1 }}
                             >
                               Delete
                             </button>
@@ -519,7 +530,6 @@ const Product = () => {
             })()}
           </div>
         </div>
-      </div>
     </div>
   );
 }
