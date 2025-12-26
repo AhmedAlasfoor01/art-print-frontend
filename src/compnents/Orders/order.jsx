@@ -5,46 +5,37 @@ import { createOrder } from '../Services/order';
 import { getAllProducts } from '../Services/product';
 
 const Order = () => {
-  // Get the current user from context (we need this to create the order)
   const { user } = useContext(UserContext);
-  
-  // allows us to redirect to other pages
   const navigate = useNavigate();
-  
- 
+
   const [searchParams] = useSearchParams();
-  const productId = searchParams.get('productId'); // Get product ID from URL
-  
-  // State to store the product we're ordering
+  const productId = searchParams.get('productId');
+
   const [product, setProduct] = useState(null);
-  
-  // State for loading and errors
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  
-  // State for order form (quantity the user wants to order)
+
   const [orderQuantity, setOrderQuantity] = useState(1);
 
-  // useEffect runs when component loads or when productId changes
-  // This fetches the product details from the API
   useEffect(() => {
-    // If no productId in url, redirect back to products page
     if (!productId) {
       navigate('/products');
       return;
     }
 
-    // Function to fetch product details
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        // Get all products and find the one we need
         const products = await getAllProducts();
         const foundProduct = products.find(p => p._id === productId);
-        
+
         if (foundProduct) {
           setProduct(foundProduct);
+          // If product has limited stock, keep quantity within stock
+          const maxQty = Number(foundProduct.Quantity ?? foundProduct.quantity ?? 0);
+          if (maxQty > 0) setOrderQuantity(1);
         } else {
           setError('Product not found');
         }
@@ -59,20 +50,25 @@ const Order = () => {
     fetchProduct();
   }, [productId, navigate]);
 
-  // handles checkout - this creates the order
   const handleCheckout = async (e) => {
-    e.preventDefault(); // prevent form from refreshing page
-    
-    // Check if user is logged in
+    e.preventDefault();
+
     if (!user) {
       setError('Please sign in to place an order');
       navigate('/sign-in');
       return;
     }
 
-    // check if quantity is valid
-    if (orderQuantity < 1) {
+    const qty = Number(orderQuantity);
+    if (!qty || qty < 1) {
       setError('Quantity must be at least 1');
+      return;
+    }
+
+    // Check stock if available in product
+    const stock = Number(product?.Quantity ?? product?.quantity ?? 0);
+    if (stock && qty > stock) {
+      setError(`Not enough stock. Available: ${stock}`);
       return;
     }
 
@@ -80,37 +76,27 @@ const Order = () => {
     setError(null);
 
     try {
-      // Calculate total price
-      const totalPrice = product.price * orderQuantity;
-
-      // Prepare order data to send to the backend
+      // ✅ Backend expects { Quantity, Status } and productId in URL
       const orderData = {
-        product: productId, 
-        quantity: orderQuantity, 
-        totalPrice: totalPrice, 
-        status: 'pending' 
+        Quantity: qty,
+        Status: 'pending', // can be string; backend only checks it's not undefined
       };
 
-      // Create the order using the service function
-      await createOrder(orderData);
-      
-      // Show success message
+      await createOrder(productId, orderData);
+
       setSuccess(true);
-      
-      // Redirect to dashboard after 2 seconds
+
       setTimeout(() => {
         navigate('/Dashboard');
       }, 2000);
-      
+
     } catch (err) {
-      // If something goes wrong, show error message
       setError(err.message || 'Failed to create order. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // If still loading product, show loading message
   if (loading && !product) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -122,7 +108,6 @@ const Order = () => {
     );
   }
 
-  // If product not found, show error
   if (!product) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -139,156 +124,177 @@ const Order = () => {
     );
   }
 
-  // Get product image (use first image if available)
-  const productImage = product.images && product.images.length > 0 
-    ? product.images[0] 
-    : 'https://via.placeholder.com/400x400?text=No+Image';
-  
+  // ✅ Product image handling (your model: image.url and images[].url)
+  const productImage =
+    (product?.image?.url) ||
+    (product?.images?.length > 0 ? product.images[0]?.url : null) ||
+    'https://via.placeholder.com/400x400?text=No+Image';
+
   const productName = product.ProductName || product.name || 'Untitled';
-  const productPrice = product.price || 0;
+
+  // ✅ Your model uses Price (capital P)
+  const productPrice = Number(product.Price ?? product.price ?? 0);
+
+  // Your model doesn't have currency in schema; use constant or fallback
   const productCurrency = product.currency || 'BHD';
-  const totalPrice = productPrice * orderQuantity;
+
+  const totalPrice = productPrice * Number(orderQuantity || 1);
+
+  const stock = Number(product?.Quantity ?? product?.quantity ?? 0);
 
   return (
     <div className="container" style={{ minHeight: '100vh', maxWidth: '900px' }}>
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Checkout</h1>
-          <p className="text-slate-600">Complete your order for {productName}</p>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Checkout</h1>
+        <p className="text-slate-600">Complete your order for {productName}</p>
+      </div>
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
+          <p className="font-medium">Order placed successfully! Redirecting...</p>
         </div>
+      )}
 
-        {/* Success Message */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-            <p className="font-medium">Order placed successfully! Redirecting...</p>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+          <p>{error}</p>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+            ×
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Product Details</h2>
+
+          <div className="mb-4">
+            <img
+              src={productImage}
+              alt={productName}
+              className="w-full h-64 object-cover rounded-lg"
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/400x400?text=No+Image';
+              }}
+            />
           </div>
-        )}
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
-            <p>{error}</p>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              ×
-            </button>
-          </div>
-        )}
+          <h3 className="text-2xl font-bold text-slate-900 mb-2">{productName}</h3>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Side: Product Information */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Product Details</h2>
-            
-            {/* Product Image */}
-            <div className="mb-4">
-              <img
-                src={productImage}
-                alt={productName}
-                className="w-full h-64 object-cover rounded-lg"
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/400x400?text=No+Image';
-                }}
-              />
+          {product.description && (
+            <p className="text-slate-600 mb-4">{product.description}</p>
+          )}
+
+          <div className="border-t border-slate-200 pt-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-slate-600">Price per item:</span>
+              <span className="font-semibold text-slate-900">
+                {productPrice} {productCurrency}
+              </span>
             </div>
 
-            {/* Product Name */}
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">{productName}</h3>
-            
-            {/* Product Description */}
-            {product.description && (
-              <p className="text-slate-600 mb-4">{product.description}</p>
+            {Number.isFinite(stock) && stock > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">In stock:</span>
+                <span className="font-semibold text-slate-900">{stock}</span>
+              </div>
             )}
+          </div>
+        </div>
 
-            {/* Price Display */}
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Order Information</h2>
+
+          <form onSubmit={handleCheckout} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Quantity
+              </label>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setOrderQuantity(Math.max(1, Number(orderQuantity) - 1))}
+                  className="btn"
+                  style={{ width: '40px', height: '40px', padding: 0 }}
+                  disabled={Number(orderQuantity) <= 1}
+                >
+                  −
+                </button>
+
+                <input
+                  type="number"
+                  min="1"
+                  max={stock > 0 ? stock : undefined}
+                  value={orderQuantity}
+                  onChange={(e) => {
+                    const v = Math.max(1, parseInt(e.target.value, 10) || 1);
+                    if (stock > 0) setOrderQuantity(Math.min(v, stock));
+                    else setOrderQuantity(v);
+                  }}
+                  className="input"
+                  style={{ width: '80px', textAlign: 'center' }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = Number(orderQuantity) + 1;
+                    if (stock > 0) setOrderQuantity(Math.min(next, stock));
+                    else setOrderQuantity(next);
+                  }}
+                  className="btn"
+                  style={{ width: '40px', height: '40px', padding: 0 }}
+                  disabled={stock > 0 ? Number(orderQuantity) >= stock : false}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
             <div className="border-t border-slate-200 pt-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-slate-600">Price per item:</span>
-                <span className="font-semibold text-slate-900">
-                  {productPrice} {productCurrency}
+                <span className="text-slate-600">Subtotal:</span>
+                <span className="text-slate-900">
+                  {productPrice} {productCurrency} × {orderQuantity}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span className="text-slate-900">Total:</span>
+                <span className="text-blue-600">
+                  {totalPrice} {productCurrency}
                 </span>
               </div>
             </div>
-          </div>
 
-          {/* Right Side: Order Form */}
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Order Information</h2>
-            
-            <form onSubmit={handleCheckout} className="space-y-4">
-              {/* Quantity Selector */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Quantity
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setOrderQuantity(Math.max(1, orderQuantity - 1))}
-                    className="btn"
-                    style={{ width: '40px', height: '40px', padding: 0 }}
-                    disabled={orderQuantity <= 1}
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    value={orderQuantity}
-                    onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="input"
-                    style={{ width: '80px', textAlign: 'center' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setOrderQuantity(orderQuantity + 1)}
-                    className="btn"
-                    style={{ width: '40px', height: '40px', padding: 0 }}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+            <button
+              type="submit"
+              disabled={loading || success}
+              className="btn btnPrimary"
+              style={{
+                width: '100%',
+                opacity: (loading || success) ? 0.5 : 1,
+                cursor: (loading || success) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Processing...' : success ? 'Order Placed!' : 'Place Order'}
+            </button>
 
-              {/* Total Price Display */}
-              <div className="border-t border-slate-200 pt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-slate-600">Subtotal:</span>
-                  <span className="text-slate-900">
-                    {productPrice} {productCurrency} × {orderQuantity}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <span className="text-slate-900">Total:</span>
-                  <span className="text-blue-600">
-                    {totalPrice} {productCurrency}
-                  </span>
-                </div>
-              </div>
-
-              {/* Checkout Button */}
-              <button
-                type="submit"
-                disabled={loading || success}
-                className="btn btnPrimary"
-                style={{ width: '100%', opacity: (loading || success) ? 0.5 : 1, cursor: (loading || success) ? 'not-allowed' : 'pointer' }}
-              >
-                {loading ? 'Processing...' : success ? 'Order Placed!' : 'Place Order'}
-              </button>
-
-              {/* Back Button */}
-              <button
-                type="button"
-                onClick={() => navigate('/products')}
-                className="btn"
-                style={{ width: '100%' }}
-              >
-                Back to Products
-              </button>
-            </form>
-          </div>
+            <button
+              type="button"
+              onClick={() => navigate('/products')}
+              className="btn"
+              style={{ width: '100%' }}
+            >
+              Back to Products
+            </button>
+          </form>
         </div>
+      </div>
     </div>
   );
 };
 
 export default Order;
+

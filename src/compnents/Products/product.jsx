@@ -10,23 +10,26 @@ const Product = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [newProduct, setNewProduct] = useState({
-    ProductName: '',
-    description: '',
-    price: '',
-    currency: 'BHD',
-    images: [],
-    quantity: '',
-   
-  });
+ 
+const [newProduct, setNewProduct] = useState({
+  ProductName: "",
+  Category: "",
+  Price: "",
+  Size: "",
+  Quantity: "",
+});
 
   const [editId, setEditId] = useState(null);
   const [selectedProductId, setSelectedProductId] = useState(null);
-  const [imageUrl, setImageUrl] = useState('');
+
+  const [imageFile, setImageFile] = useState(null);
+
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     if (!user?._id) return;
     setLoading(true);
+
     getAllProducts()
       .then(data => setproduct(data))
       .catch(() => setError('Failed to fetch products'))
@@ -38,35 +41,62 @@ const Product = () => {
     setNewProduct(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async () => {
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Prevent page refresh on form submit
     if (!user?._id) return;
+  
+    if (!editId && !imageFile) {
+      setError('Please select an image file');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
-    const payload = { ...newProduct, owner: user._id };
+    
+  
+   
+const formData = new FormData();
+
+formData.append("ProductName", newProduct.ProductName);
+formData.append("Category", newProduct.Category);
+formData.append("Price", newProduct.Price);
+formData.append("Size", newProduct.Size);
+formData.append("Quantity", newProduct.Quantity);
+
+
+formData.append("userId", user._id);
+
+if (imageFile) {
+  formData.append("image", imageFile);
+}          
+
+    
+  
+   
+    
     try {
       let saved;
       if (editId) {
-        saved = await updateProduct(editId, payload);
+        saved = await updateProduct(editId, formData);
         setproduct(product.map(b => (b._id === editId ? saved : b)));
         setEditId(null);
       } else {
-        saved = await createProduct(payload);
+        saved = await createProduct(formData);
         setproduct([...product, saved]);
       }
       setSelectedProductId(saved._id);
       setNewProduct({
-        ProductName: '',
-        description: '',
-        price: '',
-        currency: 'BHD',
-        images: [],
-        quantity: '',
-        
-      
+          ProductName: "",
+          Category: "",
+          Price: "",
+          Size: "",
+          Quantity: "",
       });
-      setImageUrl('');
-    } catch {
-      setError('Failed to save Product');
+      setImageFile(null);
+      setImagePreview(null);
+    } catch (err) {
+      setError(err.message || 'Failed to save Product');
     } finally {
       setLoading(false);
     }
@@ -76,13 +106,13 @@ const Product = () => {
     setNewProduct({
       ProductName: Product.ProductName || Product.name || '',
       description: Product.description || '',
-      price: Product.price || '',
+      Price: Product.Price || '',
       currency: Product.currency || 'BHD',
-      images: Product.images || [],
-      quantity: Product.quantity|| '',
-     
+      quantity: Product.quantity || '',
     });
     setEditId(Product._id);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleDelete = async (ProductId) => {
@@ -106,31 +136,33 @@ const Product = () => {
     setEditId(null);
     setNewProduct({
       ProductName: '',
-      description: '',
-      price: '',
-      currency: 'BHD',
-      images: [],
-      quantity: '',
-     
+  description: '',
+  Category: 'Art',  
+  Size: 1,           
+  Price: '',
+  currency: 'BHD',
+  quantity: '',
     });
-    setImageUrl('');
+    setImageFile(null);
+    setImagePreview(null);
   };
 
-  const handleAddImage = () => {
-    if (imageUrl.trim()) {
-      setNewProduct(prev => ({
-        ...prev,
-        images: [...prev.images, imageUrl.trim()]
-      }));
-      setImageUrl('');
+
+  const handleImageChange = (e) => {
+
+    const file = e.target.files[0];
+    if (file) {
+      // Store the actual File object 
+      setImageFile(file);
+      
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+      
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file); 
     }
-  };
-
-  const handleRemoveImage = (index) => {
-    setNewProduct(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
   };
 
   return (
@@ -156,21 +188,23 @@ const Product = () => {
                 {editId ? 'Edit Product' : 'Create Product'}
               </h3>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Artwork Title
-                  </label>
-                  <input 
-                    name='ProductName'  
-                    value={newProduct.ProductName} 
-                    onChange={handleInputChange} 
-                    required
-                    className="input"
-                    style={{ width: '100%' }}
-                    placeholder="Enter artwork title"
-                  />
-                </div>
+             
+              <form onSubmit={handleSubmit} encType="multipart/form-data">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Artwork Title
+                    </label>
+                    <input 
+                      name='ProductName'  
+                      value={newProduct.ProductName} 
+                      onChange={handleInputChange} 
+                      required
+                      className="input"
+                      style={{ width: '100%' }}
+                      placeholder="Enter artwork title"
+                    />
+                  </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -208,8 +242,8 @@ const Product = () => {
                     </label>
                     <input 
                       type='number' 
-                      name='price' 
-                      value={newProduct.price} 
+                      name='Price' 
+                      value={newProduct.Price} 
                       onChange={handleInputChange}
                       className="input"
                       style={{ width: '100%' }}
@@ -248,67 +282,59 @@ const Product = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Image URLs
-                  </label>
-                  <div className="flex gap-2">
+               
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Image File {!editId && <span className="text-red-500">*</span>}
+                    </label>
                     <input 
-                      type='url' 
-                      value={imageUrl} 
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddImage()}
+                      type='file'           
+                      accept='image/*'      
+                      onChange={handleImageChange} 
+                      required={!editId}    
                       className="input"
-                      style={{ flex: 1 }}
-                      placeholder="Enter image URL"
+                      style={{ width: '100%', padding: '8px' }}
                     />
-                    <button 
-                      type="button"
-                      onClick={handleAddImage}
-                      className="btn"
-                    >
-                      Add
-                    </button>
+                    
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="w-full h-48 object-cover rounded-lg border border-slate-200" 
+                        />
+                      </div>
+                    )}
+                   
+                    {editId && !imagePreview && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Leave empty to keep current image, or select a new image to replace it
+                      </p>
+                    )}
                   </div>
-                  {newProduct.images.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {newProduct.images.map((img, idx) => (
-                        <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
-                          <img src={img} alt={`Preview ${idx + 1}`} className="w-10 h-10 object-cover rounded" />
-                          <span className="flex-1 text-xs text-slate-600 truncate">{img}</span>
-                          <button 
-                            type="button"
-                            onClick={() => handleRemoveImage(idx)}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                <div className="cardActions">
-                  <button 
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="btn btnPrimary"
-                    style={{ flex: 1, opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
-                  >
-                    {loading ? 'Saving...' : (editId ? 'Update' : 'Create')}
-                  </button>
-                  {editId && (
+                  <div className="cardActions">
                     <button 
-                      onClick={handleCancel}
-                      className="btn"
-                      style={{ flex: 1 }}
+                      type="submit"
+                      disabled={loading}
+                      className="btn btnPrimary"
+                      style={{ flex: 1, opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
                     >
-                      Cancel
+                      {loading ? 'Saving...' : (editId ? 'Update' : 'Create')}
                     </button>
-                  )}
+                    {editId && (
+                      <button 
+                        type="button"
+                        onClick={handleCancel}
+                        className="btn"
+                        style={{ flex: 1 }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
 
@@ -387,10 +413,10 @@ const Product = () => {
                             <p className="text-sm text-slate-500 mb-3 line-clamp-2">{Product.description}</p>
                           )}
                           
-                          {Product.price && (
+                          {Product.Price && (
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-lg font-bold text-slate-900">
-                                {Product.price} {Product.currency || 'BHD'}
+                                {Product.Price} {Product.currency || 'BHD'}
                               </span>
                             </div>
                           )}
@@ -404,11 +430,11 @@ const Product = () => {
                           )}
 
                           <div className="cardActions">
-                            {/* Buy Now Button - redirects to order page with product ID */}
+                            
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
-                                // Navigate to order page with product ID in URL
+                                
                                 navigate(`/orders?productId=${Product._id}`);
                               }} 
                               className="btn btnPrimary"
@@ -508,11 +534,11 @@ const Product = () => {
                       )}
 
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
-                        {selectedProduct.price && (
+                        {selectedProduct.Price && (
                           <div>
                             <h5 className="text-sm font-semibold text-slate-500 mb-1">Price</h5>
                             <p className="text-xl font-bold text-slate-900">
-                              {selectedProduct.price} {selectedProduct.currency || 'BHD'}
+                              {selectedProduct.Price} {selectedProduct.currency || 'BHD'}
                             </p>
                           </div>
                         )}
