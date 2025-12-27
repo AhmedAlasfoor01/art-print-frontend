@@ -1,10 +1,14 @@
 
 const BASE_URL = `${import.meta.env.VITE_BACK_END_SERVER_URL}/product`;
 
+const authHeader = () => ({
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
+});
+
 const getAllProducts = async () => {
   const res = await fetch(BASE_URL, {
     headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      ...authHeader(),
       Accept: "application/json",
     },
   });
@@ -26,8 +30,9 @@ const createProduct = async (formData) => {
   const res = await fetch(BASE_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      ...authHeader(),
       Accept: "application/json",
+      
     },
     body: formData,
   });
@@ -45,11 +50,11 @@ const createProduct = async (formData) => {
   return await res.json();
 };
 
-const updateProduct = async (ProductId, formData) => {
-  const res = await fetch(`${BASE_URL}/${ProductId}`, {
+const updateProduct = async (productId, formData) => {
+  const res = await fetch(`${BASE_URL}/${productId}`, {
     method: "PUT",
     headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      ...authHeader(),
       Accept: "application/json",
     },
     body: formData,
@@ -68,11 +73,11 @@ const updateProduct = async (ProductId, formData) => {
   return await res.json();
 };
 
-const deleteProduct = async (ProductId) => {
-  const res = await fetch(`${BASE_URL}/${ProductId}`, {
+const deleteProduct = async (productId) => {
+  const res = await fetch(`${BASE_URL}/${productId}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      ...authHeader(),
       Accept: "application/json",
     },
   });
@@ -87,7 +92,6 @@ const deleteProduct = async (ProductId) => {
     }
   }
 
-  
   return await res.json();
 };
 
