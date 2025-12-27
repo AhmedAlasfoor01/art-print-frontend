@@ -10,8 +10,10 @@ const Product = () => {
   const [product, setproduct] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+   const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
-  // ✅ Must match backend required fields (same spelling/case)
+ 
   const [newProduct, setNewProduct] = useState({
     ProductName: "",
     Category: "Art",
@@ -23,9 +25,8 @@ const Product = () => {
   const [editId, setEditId] = useState(null);
   const [selectedProductId, setSelectedProductId] = useState(null);
 
-  // ✅ Cloudinary selected image (instead of file upload)
-  const [cloudImage, setCloudImage] = useState(null); // { url, cloudinary_id }
-  const [imagePreview, setImagePreview] = useState(null);
+
+ 
 
   useEffect(() => {
     if (!user?._id) return;
@@ -37,146 +38,76 @@ const Product = () => {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  
 
-    setNewProduct((prev) => ({
-      ...prev,
-      [name]:
-        name === "Price" || name === "Size" || name === "Quantity"
-          ? value === "" ? "" : Number(value)
-          : value,
-    }));
-  };
 
-  // ✅ Cloudinary widget button (choose 1 image)
-  const openCloudinaryWidget = () => {
-    if (!window.cloudinary) {
-      setError("Cloudinary widget not loaded. Add the script to index.html");
-      return;
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+
+  setNewProduct((prev) => ({
+    ...prev,
+    [name]:
+      name === "Price" || name === "Size" || name === "Quantity"
+        ? value === ""
+          ? ""
+          : Number(value)
+        : value,
+  }));
+};
+
+
+const handleImageChange = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  setImageFile(file);
+
+  const reader = new FileReader();
+  reader.onloadend = () => setImagePreview(reader.result);
+  reader.readAsDataURL(file);
+};
+
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!user?._id) return;
+
+  
+  if (!editId && !imageFile) {
+    setError("Please select an image from your device");
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+
+  const formData = new FormData();
+  formData.append("ProductName", newProduct.ProductName);
+  formData.append("Category", newProduct.Category);
+  formData.append("Price", newProduct.Price);
+  formData.append("Size", newProduct.Size);
+  formData.append("Quantity", newProduct.Quantity);
+
+  
+  if (imageFile) {
+    formData.append("image", imageFile);
+  }
+
+  try {
+    let saved;
+
+    if (editId) {
+      saved = await updateProduct(editId, formData);
+      setproduct((prev) => prev.map((p) => (p._id === editId ? saved : p)));
+      setEditId(null);
+    } else {
+      saved = await createProduct(formData);
+      setproduct((prev) => [...prev, saved]);
     }
 
-    const widget = window.cloudinary.createUploadWidget(
-      {
-        cloudName: "dzvfhppl4",
-        uploadPreset: "YOUR_UNSIGNED_UPLOAD_PRESET", // 🔴 replace this
-        multiple: false,
-        folder: "marketplace-listings",
-        resourceType: "image",
-        sources: ["local", "url", "camera"], // you can add "google_drive" etc if you want
-      },
-      (err, result) => {
-        if (err) {
-          setError(err.message || "Cloudinary error");
-          return;
-        }
+    setSelectedProductId(saved._id);
 
-        if (result.event === "success") {
-          const url = result.info.secure_url;
-          const publicId = result.info.public_id;
-
-          setCloudImage({
-            url,
-            cloudinary_id: publicId,
-          });
-
-          setImagePreview(url);
-        }
-      }
-    );
-
-    widget.open();
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user?._id) return;
-
-    // ✅ create needs image (backend requires image in schema)
-    if (!editId && !cloudImage) {
-      setError("Please choose an image from Cloudinary");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    // ✅ Backend expects these names:
-    // const { ProductName, Category, Price, Size, Quantity } = req.body;
-    const formData = new FormData();
-    formData.append("ProductName", newProduct.ProductName);
-    formData.append("Category", newProduct.Category);
-    formData.append("Price", newProduct.Price);
-    formData.append("Size", newProduct.Size);
-    formData.append("Quantity", newProduct.Quantity);
-
-    // ✅ Instead of uploading file, send cloudinary data
-    // (Backend must accept these two fields)
-    if (cloudImage?.url && cloudImage?.cloudinary_id) {
-      formData.append("imageUrl", cloudImage.url);
-      formData.append("cloudinary_id", cloudImage.cloudinary_id);
-    }
-
-    try {
-      let saved;
-
-      if (editId) {
-        saved = await updateProduct(editId, formData);
-        setproduct((prev) => prev.map((p) => (p._id === editId ? saved : p)));
-        setEditId(null);
-      } else {
-        saved = await createProduct(formData);
-        setproduct((prev) => [...prev, saved]);
-      }
-
-      setSelectedProductId(saved._id);
-
-      // Reset
-      setNewProduct({
-        ProductName: "",
-        Category: "Art",
-        Price: "",
-        Size: 1,
-        Quantity: "",
-      });
-      setCloudImage(null);
-      setImagePreview(null);
-    } catch (err) {
-      setError(err.message || "Failed to save Product");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = (p) => {
-    setNewProduct({
-      ProductName: p.ProductName || "",
-      Category: p.Category || "Art",
-      Price: p.Price ?? "",
-      Size: p.Size ?? 1,
-      Quantity: p.Quantity ?? "",
-    });
-
-    setEditId(p._id);
-
-    // ✅ show existing image
-    const currentUrl =
-      p?.image?.url ||
-      (p?.images?.length > 0 ? p.images[0]?.url : null);
-
-    setImagePreview(currentUrl);
-    setCloudImage(
-      currentUrl && (p?.image?.cloudinary_id || p?.images?.[0]?.cloudinary_id)
-        ? {
-            url: currentUrl,
-            cloudinary_id: p?.image?.cloudinary_id || p?.images?.[0]?.cloudinary_id,
-          }
-        : null
-    );
-  };
-
-  const handleCancel = () => {
-    setEditId(null);
+    
     setNewProduct({
       ProductName: "",
       Category: "Art",
@@ -184,35 +115,54 @@ const Product = () => {
       Size: 1,
       Quantity: "",
     });
-    setCloudImage(null);
+    setImageFile(null);
     setImagePreview(null);
-  };
+  } catch (err) {
+    setError(err.message || "Failed to save Product");
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const handleDelete = async (productId) => {
-    if (!window.confirm("Are you sure you want to delete this Product?")) return;
+const handleEdit = (p) => {
+  setNewProduct({
+    ProductName: p.ProductName || "",
+    Category: p.Category || "Art",
+    Price: p.Price ?? "",
+    Size: p.Size ?? 1,
+    Quantity: p.Quantity ?? "",
+  });
 
-    setLoading(true);
-    setError(null);
+  setEditId(p._id);
 
-    try {
-      await deleteProduct(productId);
-      setproduct((prev) => prev.filter((p) => p._id !== productId));
-      if (selectedProductId === productId) setSelectedProductId(null);
-    } catch {
-      setError("Failed to delete Product");
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  const currentUrl =
+    p?.image?.url || (p?.images?.length > 0 ? p.images[0]?.url : null);
 
-  // ✅ Your model: image.url and images[].url
-  const getMainImageUrl = (p) => {
-    return (
-      p?.image?.url ||
-      (p?.images?.length > 0 ? p.images[0]?.url : null) ||
-      "https://via.placeholder.com/400x400?text=No+Image"
-    );
-  };
+  setImagePreview(currentUrl);
+  setImageFile(null); 
+};
+
+const handleCancel = () => {
+  setEditId(null);
+  setNewProduct({
+    ProductName: "",
+    Category: "Art",
+    Price: "",
+    Size: 1,
+    Quantity: "",
+  });
+  setImageFile(null);
+  setImagePreview(null);
+};
+
+const getMainImageUrl = (p) => {
+  return (
+    p?.image?.url ||
+    (p?.images?.length > 0 ? p.images[0]?.url : null) ||
+    "https://via.placeholder.com/400x400?text=No+Image"
+  );
+};
 
   return (
     <div className="container" style={{ minHeight: "100vh", paddingTop: "24px" }}>
@@ -308,40 +258,42 @@ const Product = () => {
                   />
                 </div>
 
-                {/* ✅ Cloudinary Choose Photo (replaces file input) */}
+                
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Image (Cloudinary) {!editId && <span className="text-red-500">*</span>}
-                  </label>
+  <label className="block text-sm font-medium text-slate-700 mb-1">
+    Image File {!editId && <span className="text-red-500">*</span>}
+  </label>
 
-                  <button
-                    type="button"
-                    onClick={openCloudinaryWidget}
-                    className="btn btnPrimary"
-                    style={{ width: "100%" }}
-                  >
-                    Choose Photo
-                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    required={!editId}
+                    className="input"
+                    style={{ width: "100%", padding: "8px" }}
+                  />
 
                   {imagePreview && (
                     <div className="mt-2">
                       <img
                         src={imagePreview}
                         alt="Preview"
-                        className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                        style={{
+                          width: "100%",
+                          maxHeight: "180px",     
+                          objectFit: "cover",     
+                          borderRadius: "12px",
+                          border: "1px solid #e2e8f0",
+                        }}
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/400x400?text=No+Image";
+                          e.currentTarget.src =
+                            "https://via.placeholder.com/400x400?text=No+Image";
                         }}
                       />
                     </div>
                   )}
-
-                  {!editId && !imagePreview && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Click “Choose Photo” to select 1 image.
-                    </p>
-                  )}
                 </div>
+
 
                 <div className="cardActions">
                   <button

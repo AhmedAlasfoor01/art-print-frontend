@@ -27,7 +27,7 @@ const getAllOrders = async () => {
   return await res.json();
 };
 
-// ✅ backend: POST /Order/:productId with JSON { Quantity, Status }
+
 const createOrder = async (productId, orderData) => {
   const res = await fetch(`${BASE_URL}/${productId}`, {
     method: "POST",
